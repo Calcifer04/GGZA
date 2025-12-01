@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #FFD700;
+  --gold-dark: #B8960F;
+  --black: #0A0A0B;
+  --black-light: #141416;
+  --black-lighter: #1E1E22;
+  --green: #007A33;
+  --red: #DE3831;
+  --blue: #002395;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  background-color: var(--black);
+  color: #FAFAFA;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--black-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--black-lighter);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2A2A30;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: rgba(255, 215, 0, 0.3);
+  color: white;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sa-flag-gradient {
+  background: linear-gradient(
+    135deg,
+    #007A33 0%,
+    #007A33 20%,
+    #FFD700 20%,
+    #FFD700 40%,
+    #000000 40%,
+    #000000 60%,
+    #DE3831 60%,
+    #DE3831 80%,
+    #002395 80%,
+    #002395 100%
+  );
+}
+
+.geo-pattern {
+  background-image: 
+    linear-gradient(30deg, rgba(255, 215, 0, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(255, 215, 0, 0.03) 87.5%, rgba(255, 215, 0, 0.03)),
+    linear-gradient(150deg, rgba(255, 215, 0, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(255, 215, 0, 0.03) 87.5%, rgba(255, 215, 0, 0.03)),
+    linear-gradient(30deg, rgba(255, 215, 0, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(255, 215, 0, 0.03) 87.5%, rgba(255, 215, 0, 0.03)),
+    linear-gradient(150deg, rgba(255, 215, 0, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(255, 215, 0, 0.03) 87.5%, rgba(255, 215, 0, 0.03));
+  background-size: 80px 140px;
+  background-position: 0 0, 0 0, 40px 70px, 40px 70px;
+}
+
+.glass {
+  background: rgba(20, 20, 22, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-gold {
+  background: rgba(255, 215, 0, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(30, 30, 34, 0.8) 0%, rgba(10, 10, 11, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.card-glow {
+  position: relative;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), transparent, rgba(255, 215, 0, 0.3));
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+@keyframes timer-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+  }
+}
+
+.timer-urgent {
+  animation: timer-pulse 0.5s ease-in-out infinite;
+}
+
+.rank-1 {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #0A0A0B;
+}
+
+.rank-2 {
+  background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
+  color: #0A0A0B;
+}
+
+.rank-3 {
+  background: linear-gradient(135deg, #CD7F32 0%, #B87333 100%);
+  color: #0A0A0B;
+}
+
+.game-cs2 { --game-color: #DE9B35; }
+.game-valorant { --game-color: #FD4556; }
+.game-fifa { --game-color: #326295; }
+.game-fortnite { --game-color: #9D4DFF; }
+.game-apex { --game-color: #DA292A; }
+
+.game-accent { border-color: var(--game-color); }
+.game-bg { background-color: var(--game-color); }
+.game-text { color: var(--game-color); }
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 30, 34, 0.8) 0%,
+    rgba(50, 50, 55, 0.8) 50%,
+    rgba(30, 30, 34, 0.8) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 768px) {
+  .card {
+    border-radius: 12px;
+  }
+}
+
