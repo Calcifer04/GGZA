@@ -23,10 +23,12 @@ export interface DiscordTokens {
   scope: string
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://ggza-mauve.vercel.app'
+
 export function getDiscordOAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/discord/callback`,
+    redirect_uri: `${APP_URL}/api/auth/discord/callback`,
     response_type: 'code',
     scope: 'identify email guilds.join',
     state,
@@ -41,7 +43,7 @@ export async function exchangeCodeForTokens(code: string): Promise<DiscordTokens
     client_secret: process.env.DISCORD_CLIENT_SECRET!,
     grant_type: 'authorization_code',
     code,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/discord/callback`,
+    redirect_uri: `${APP_URL}/api/auth/discord/callback`,
   })
 
   const response = await fetch(`${DISCORD_API_BASE}/oauth2/token`, {

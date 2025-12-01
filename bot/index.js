@@ -24,7 +24,7 @@ const config = {
   token: process.env.DISCORD_BOT_TOKEN,
   clientId: process.env.DISCORD_CLIENT_ID,
   guildId: process.env.DISCORD_GUILD_ID,
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://ggza-mauve.vercel.app',
   
   roles: {
     verified: process.env.DISCORD_ROLE_VERIFIED,
