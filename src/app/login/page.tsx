@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Gamepad2, AlertCircle } from 'lucide-react'
@@ -16,7 +17,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   not_in_server: 'You must join our Discord server first to use GGZA. Join the server and try again.',
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const redirect = searchParams.get('redirect')
@@ -99,6 +100,30 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-ggza-black flex items-center justify-center p-4">
+        <div className="absolute inset-0 geo-pattern opacity-30" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-ggza-gold/5 rounded-full blur-3xl" />
+        <div className="relative w-full max-w-md">
+          <div className="flex items-center justify-center gap-3 mb-12">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-ggza-gold to-amber-500 flex items-center justify-center">
+              <span className="font-display text-2xl text-ggza-black">GG</span>
+            </div>
+            <span className="font-display text-3xl text-white">GGZA</span>
+          </div>
+          <div className="p-8 rounded-2xl bg-ggza-black-lighter border border-white/5 text-center">
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
 

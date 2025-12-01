@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -17,7 +17,12 @@ export const metadata: Metadata = {
     title: 'GGZA - South African Gaming Quiz Hub',
     description: 'Weekly gaming quizzes with cash prizes. Join the SA gaming community.',
   },
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: '#FFD700',
 }
 
