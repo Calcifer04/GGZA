@@ -23,7 +23,7 @@ export interface DiscordTokens {
   scope: string
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://ggza-mauve.vercel.app'
+const APP_URL = 'https://ggza-mauve.vercel.app'
 
 export function getDiscordOAuthUrl(state: string): string {
   const params = new URLSearchParams({
