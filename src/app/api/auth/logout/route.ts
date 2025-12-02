@@ -19,14 +19,14 @@ export async function POST(request: Request) {
   
   await destroySession()
   
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ggza-mauve.vercel.app'
+  const baseUrl = 'https://ggza-mauve.vercel.app'
   return NextResponse.redirect(`${baseUrl}/`)
 }
 
 export async function GET() {
   await destroySession()
   
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ggza-mauve.vercel.app'
+  const baseUrl = 'https://ggza-mauve.vercel.app'
   return NextResponse.redirect(`${baseUrl}/`)
 }
 

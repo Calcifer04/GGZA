@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const state = searchParams.get('state')
   const error = searchParams.get('error')
   
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ggza-mauve.vercel.app'
+  const baseUrl = 'https://ggza-mauve.vercel.app'
   
   // Handle Discord errors
   if (error) {
