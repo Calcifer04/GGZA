@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { Calendar, Trophy, Gamepad2, ArrowRight, Clock, Users } from 'lucide-react'
 import { requireAuth } from '@/lib/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/server'
-import { Card, Badge, Countdown, Button } from '@/components/ui'
+import { Card, Badge, Countdown, Button, MarqueeCarousel } from '@/components/ui'
+import { SidePanel } from '@/components/dashboard'
 import { formatCurrency, GAME_NAMES, GAME_COLORS, DAY_NAMES } from '@/lib/utils'
 
 async function getDashboardData(userId: string) {
@@ -53,13 +54,22 @@ export default async function DashboardPage() {
   const userGameSlugs = userGames.map(ug => ug.game?.slug)
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Welcome Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-display text-white mb-2">
-          Welcome back, <span className="text-gradient-gold">{user.first_name || user.discord_username}</span>
-        </h1>
-        <p className="text-gray-400">Ready for your next quiz challenge?</p>
+    <>
+    {/* Collapsible Side Panel - Live Stats & Missions */}
+    <SidePanel />
+    
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 xl:mr-80">
+      {/* Welcome Header with Carousel */}
+      <div className="mb-8 flex items-center gap-6">
+        <div className="flex-shrink-0">
+          <h1 className="text-3xl font-display text-white mb-2">
+            Welcome back, <span className="text-gradient-gold">{user.first_name || user.discord_username}</span>
+          </h1>
+          <p className="text-gray-400">Ready for your next quiz challenge?</p>
+        </div>
+        <div className="flex-1 overflow-hidden rounded-2xl">
+          <MarqueeCarousel />
+        </div>
       </div>
       
       {/* Quick Stats */}
@@ -304,6 +314,7 @@ export default async function DashboardPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

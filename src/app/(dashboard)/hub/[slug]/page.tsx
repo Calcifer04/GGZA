@@ -23,6 +23,13 @@ async function getGameHubData(slug: string, userId: string) {
   
   if (!game) return null
   
+  // Get all active games for the weekly schedule
+  const { data: allGames } = await supabase
+    .from('games')
+    .select('*')
+    .eq('is_active', true)
+    .order('quiz_day', { ascending: true })
+  
   // Get upcoming quizzes
   const { data: upcomingQuizzes } = await supabase
     .from('quizzes')
@@ -69,6 +76,7 @@ async function getGameHubData(slug: string, userId: string) {
   
   return {
     game,
+    allGames: allGames || [],
     upcomingQuizzes: upcomingQuizzes || [],
     pastQuizzes: pastQuizzes || [],
     leaderboard: leaderboard || [],
@@ -85,7 +93,7 @@ export default async function GameHubPage({ params }: Props) {
     notFound()
   }
   
-  const { game, upcomingQuizzes, pastQuizzes, leaderboard, userRank, isFollowing } = data
+  const { game, allGames, upcomingQuizzes, pastQuizzes, leaderboard, userRank, isFollowing } = data
   const nextQuiz = upcomingQuizzes[0]
 
   return (
@@ -122,7 +130,7 @@ export default async function GameHubPage({ params }: Props) {
         </div>
       </div>
       
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-8 items-start">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Upcoming Quizzes */}
@@ -195,105 +203,141 @@ export default async function GameHubPage({ params }: Props) {
           )}
         </div>
         
-        {/* Sidebar - Leaderboard */}
-        <div className="space-y-6">
-          {/* Your Rank */}
-          {userRank && (
-            <Card className="p-6 glass-gold">
-              <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                <Award className="w-5 h-5 text-ggza-gold" />
-                Your Ranking
-              </h3>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-display text-ggza-gold">
-                    {userRank.rank ? getOrdinalSuffix(userRank.rank) : '-'}
-                  </div>
-                  <div className="text-sm text-gray-400">This Week</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-white">{userRank.total_points}</div>
-                  <div className="text-sm text-gray-400">points</div>
-                </div>
-              </div>
-            </Card>
-          )}
-          
-          {/* Weekly Leaderboard */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-ggza-gold" />
-                Weekly Leaderboard
-              </h3>
-              <Link href={`/leaderboard?game=${game.slug}`} className="text-sm text-ggza-gold hover:underline">
-                Full List
-              </Link>
-            </div>
-            
-            {leaderboard.length > 0 ? (
-              <div className="space-y-3">
-                {leaderboard.slice(0, 10).map((entry: any, index: number) => (
-                  <div 
-                    key={entry.id} 
-                    className={`
-                      flex items-center gap-3 p-3 rounded-xl
-                      ${index < 3 ? 'bg-white/5' : ''}
-                    `}
-                  >
-                    <div className={`
-                      w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold
-                      ${index === 0 ? 'rank-1' : ''}
-                      ${index === 1 ? 'rank-2' : ''}
-                      ${index === 2 ? 'rank-3' : ''}
-                      ${index > 2 ? 'bg-white/5 text-gray-400' : ''}
-                    `}>
-                      {index + 1}
+        {/* Sidebar */}
+        <section>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-ggza-gold" />
+            Rankings
+          </h2>
+          <div className="space-y-6">
+            {/* Your Rank */}
+            {userRank && (
+              <Card className="p-6 glass-gold">
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-ggza-gold" />
+                  Your Ranking
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-display text-ggza-gold">
+                      {userRank.rank ? getOrdinalSuffix(userRank.rank) : '-'}
                     </div>
-                    <Avatar
-                      discordId={entry.user?.id || ''}
-                      avatarHash={entry.user?.discord_avatar}
-                      username={entry.user?.discord_username || ''}
-                      size="sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-white truncate">
-                        {entry.user?.first_name || entry.user?.discord_username}
+                    <div className="text-sm text-gray-400">This Week</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-white">{userRank.total_points}</div>
+                    <div className="text-sm text-gray-400">points</div>
+                  </div>
+                </div>
+              </Card>
+            )}
+            
+            {/* Weekly Leaderboard */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-ggza-gold" />
+                  Weekly Leaderboard
+                </h3>
+                <Link href={`/leaderboard?game=${game.slug}`} className="text-sm text-ggza-gold hover:underline">
+                  Full List
+                </Link>
+              </div>
+              
+              {leaderboard.length > 0 ? (
+                <div className="space-y-3">
+                  {leaderboard.slice(0, 10).map((entry: any, index: number) => (
+                    <div 
+                      key={entry.id} 
+                      className={`
+                        flex items-center gap-3 p-3 rounded-xl
+                        ${index < 3 ? 'bg-white/5' : ''}
+                      `}
+                    >
+                      <div className={`
+                        w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold
+                        ${index === 0 ? 'rank-1' : ''}
+                        ${index === 1 ? 'rank-2' : ''}
+                        ${index === 2 ? 'rank-3' : ''}
+                        ${index > 2 ? 'bg-white/5 text-gray-400' : ''}
+                      `}>
+                        {index + 1}
+                      </div>
+                      <Avatar
+                        discordId={entry.user?.id || ''}
+                        avatarHash={entry.user?.discord_avatar}
+                        username={entry.user?.discord_username || ''}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">
+                          {entry.user?.first_name || entry.user?.discord_username}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-ggza-gold">
+                        {entry.total_points}
                       </div>
                     </div>
-                    <div className="text-sm font-bold text-ggza-gold">
-                      {entry.total_points}
-                    </div>
-                  </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-8">No scores yet this week</p>
+              )}
+            </Card>
+            
+            {/* Prize Pool */}
+            <Card className="p-6">
+              <h3 className="font-semibold text-white mb-4">Weekly Prizes</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">🥇 1st Place</span>
+                  <span className="font-semibold text-ggza-gold">R500</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">🥈 2nd Place</span>
+                  <span className="font-semibold text-gray-300">R300</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">🥉 3rd Place</span>
+                  <span className="font-semibold text-gray-300">R200</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-4">
+                Based on best 2 quiz scores per week. Ties broken by fastest time.
+              </p>
+            </Card>
+            
+            {/* Weekly Schedule */}
+            <Card className="p-6">
+              <h3 className="font-semibold text-white mb-4">Weekly Schedule</h3>
+              <div className="space-y-3">
+                {allGames.map((g: any) => (
+                  <Link
+                    key={g.id}
+                    href={`/hub/${g.slug}`}
+                    className={`
+                      flex items-center justify-between py-2 px-3 rounded-lg transition-colors
+                      ${g.slug === game.slug ? 'bg-white/5' : 'hover:bg-white/5'}
+                    `}
+                  >
+                    <span className={`text-sm ${g.slug === game.slug ? 'text-white font-medium' : 'text-gray-400'}`}>
+                      {DAY_NAMES[g.quiz_day]}
+                    </span>
+                    <span 
+                      className="text-sm font-medium"
+                      style={{ color: g.color }}
+                    >
+                      {g.display_name}
+                    </span>
+                  </Link>
                 ))}
               </div>
-            ) : (
-              <p className="text-center text-gray-500 py-8">No scores yet this week</p>
-            )}
-          </Card>
-          
-          {/* Prize Pool */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-white mb-4">Weekly Prizes</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">🥇 1st Place</span>
-                <span className="font-semibold text-ggza-gold">R500</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">🥈 2nd Place</span>
-                <span className="font-semibold text-gray-300">R300</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">🥉 3rd Place</span>
-                <span className="font-semibold text-gray-300">R200</span>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-4">
-              Based on best 2 quiz scores per week. Ties broken by fastest time.
-            </p>
-          </Card>
-        </div>
+              <p className="text-xs text-gray-500 mt-4">
+                All quizzes start at 7:00 PM SAST
+              </p>
+            </Card>
+          </div>
+        </section>
       </div>
     </div>
   )

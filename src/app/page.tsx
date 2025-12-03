@@ -52,9 +52,9 @@ export default function HomePage() {
         <div className="absolute inset-0 geo-pattern opacity-50" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-ggza-gold/5 rounded-full blur-3xl" />
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-32">
           {/* Nav */}
-          <nav className="flex items-center justify-between mb-20">
+          <nav className="flex items-center justify-between mb-16">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-ggza-gold to-amber-500 flex items-center justify-center">
                 <span className="font-display text-xl text-ggza-black">GG</span>
@@ -70,7 +70,7 @@ export default function HomePage() {
               </Link>
             </div>
           </nav>
-          
+        
           {/* Hero content */}
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ggza-gold/10 border border-ggza-gold/20 mb-8">
