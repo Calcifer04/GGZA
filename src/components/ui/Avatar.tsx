@@ -8,13 +8,14 @@ export interface AvatarProps {
   discordId: string
   avatarHash: string | null
   username: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   showRing?: boolean
   ringColor?: 'gold' | 'green' | 'red'
 }
 
 const sizeMap = {
+  xs: { dimension: 24, text: 'text-[10px]' },
   sm: { dimension: 32, text: 'text-xs' },
   md: { dimension: 40, text: 'text-sm' },
   lg: { dimension: 56, text: 'text-base' },

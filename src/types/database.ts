@@ -118,6 +118,11 @@ export interface User {
   kyc_verified_at: string | null;
   total_wins: number;
   total_earnings: number;
+  xp: number;
+  level: number;
+  streak_days: number;
+  last_daily_claim: string | null;
+  last_active_at: string;
   created_at: string;
   updated_at: string;
 }
@@ -300,6 +305,83 @@ export interface SAChallenge {
   category: string;
   is_active: boolean;
   created_at: string;
+}
+
+// ===========================================
+// Activity & Leveling Types
+// ===========================================
+
+export type ActivityStatus = 'online' | 'away' | 'in_quiz' | 'in_voice';
+export type MissionType = 'daily' | 'weekly' | 'achievement' | 'special';
+export type RequirementType = 'visit_hub' | 'play_quiz' | 'score_points' | 'win_quiz' | 'streak' | 'claim_daily' | 'invite_friend' | 'profile_complete';
+export type XPSourceType = 'quiz' | 'mission' | 'streak' | 'achievement' | 'daily' | 'bonus' | 'admin';
+
+export interface UserActivity {
+  id: string;
+  user_id: string;
+  game_id: string | null;
+  status: ActivityStatus;
+  current_page: string | null;
+  last_heartbeat: string;
+  session_started: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface XPTransaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  reason: string;
+  source_type: XPSourceType;
+  source_id: string | null;
+  created_at: string;
+}
+
+export interface Mission {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  xp_reward: number;
+  icon: string;
+  mission_type: MissionType;
+  requirement_type: RequirementType;
+  requirement_value: number;
+  game_id: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface UserMission {
+  id: string;
+  user_id: string;
+  mission_id: string;
+  progress: number;
+  completed: boolean;
+  completed_at: string | null;
+  claimed: boolean;
+  claimed_at: string | null;
+  period_key: string;
+  created_at: string;
+}
+
+export interface LevelThreshold {
+  level: number;
+  xp_required: number;
+  title: string | null;
+  badge_color: string;
+}
+
+export interface UserMissionWithDetails extends UserMission {
+  mission: Mission;
+}
+
+export interface HubActivity {
+  game_id: string;
+  game_slug: string;
+  online_count: number;
+  in_quiz_count: number;
 }
 
 // ===========================================

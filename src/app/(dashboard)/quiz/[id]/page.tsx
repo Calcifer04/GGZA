@@ -184,10 +184,19 @@ export default function QuizPage({ params }: { params: { id: string } }) {
     }
   }, [answerSubmitted, questionStartTime, state.currentQuestion, state.questions, params.id])
 
-  const handleNextQuestion = useCallback(() => {
+  const handleNextQuestion = useCallback(async () => {
     if (state.currentQuestion >= state.questions.length - 1) {
-      // Quiz finished
+      // Quiz finished - save score before redirecting
       setState(prev => ({ ...prev, status: 'finished' }))
+      
+      try {
+        await fetch(`/api/quiz/${params.id}/complete`, {
+          method: 'POST',
+        })
+      } catch (err) {
+        console.error('Failed to save quiz score:', err)
+      }
+      
       router.push(`/quiz/${params.id}/results`)
       return
     }

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'gold' | 'success' | 'warning' | 'danger' | 'game'
   gameSlug?: 'cs2' | 'valorant' | 'fifa' | 'fortnite' | 'apex'
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
 }
 
 const gameColors: Record<string, string> = {
@@ -36,6 +36,7 @@ export function Badge({
   const sizes = {
     sm: 'px-2 py-0.5 text-xs',
     md: 'px-3 py-1 text-sm',
+    lg: 'px-4 py-1.5 text-base',
   }
 
   return (

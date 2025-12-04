@@ -1,10 +1,19 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, Trophy, Gamepad2, ArrowRight, Clock, Users } from 'lucide-react'
 import { requireAuth } from '@/lib/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import { Card, Badge, Countdown, Button, MarqueeCarousel } from '@/components/ui'
 import { SidePanel } from '@/components/dashboard'
 import { formatCurrency, GAME_NAMES, GAME_COLORS, DAY_NAMES } from '@/lib/utils'
+
+const GAME_IMAGES: Record<string, string> = {
+  cs2: '/cs2.png',
+  valorant: '/valorant.jpg',
+  fifa: '/fifa.jpg',
+  fortnite: '/fortnite.jpg',
+  apex: '/apex.jpg',
+}
 
 async function getDashboardData(userId: string) {
   const supabase = createAdminSupabaseClient()
@@ -248,13 +257,22 @@ export default async function DashboardPage() {
                     key={game.id} 
                     href={`/hub/${game.slug}`}
                     className={`
-                      flex items-center justify-between p-3 rounded-xl transition-all
+                      relative flex items-center justify-between p-3 rounded-xl transition-all overflow-hidden group
                       ${isFollowing 
-                        ? 'bg-white/5 hover:bg-white/10' 
+                        ? '' 
                         : 'opacity-50 hover:opacity-100'}
                     `}
                   >
-                    <div className="flex items-center gap-3">
+                    {/* Subtle background image */}
+                    {GAME_IMAGES[game.slug] && (
+                      <>
+                        <div className="absolute inset-0 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity">
+                          <Image src={GAME_IMAGES[game.slug]} alt="" fill className="object-cover" />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-ggza-black-lighter via-ggza-black-lighter/95 to-transparent" />
+                      </>
+                    )}
+                    <div className="relative flex items-center gap-3">
                       <div 
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ backgroundColor: `${game.color}20` }}
@@ -263,7 +281,7 @@ export default async function DashboardPage() {
                       </div>
                       <span className="text-sm text-white">{game.display_name}</span>
                     </div>
-                    <span className="text-xs text-gray-500">{DAY_NAMES[game.quiz_day]}s</span>
+                    <span className="relative text-xs text-gray-500">{DAY_NAMES[game.quiz_day]}s</span>
                   </Link>
                 )
               })}

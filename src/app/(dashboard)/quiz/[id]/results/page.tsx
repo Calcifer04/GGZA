@@ -22,20 +22,44 @@ async function getQuizResults(quizId: string, userId: string) {
   
   if (!quiz) return null
   
-  // Get user's score
-  const { data: userScore } = await supabase
-    .from('quiz_scores')
-    .select('*')
-    .eq('quiz_id', quizId)
-    .eq('user_id', userId)
-    .single()
-  
   // Get user's responses
   const { data: responses } = await supabase
     .from('quiz_responses')
     .select('*')
     .eq('quiz_id', quizId)
     .eq('user_id', userId)
+  
+  // Get user's score
+  let { data: userScore } = await supabase
+    .from('quiz_scores')
+    .select('*')
+    .eq('quiz_id', quizId)
+    .eq('user_id', userId)
+    .single()
+  
+  // If no score exists but responses do, calculate and save the score
+  if (!userScore && responses && responses.length > 0) {
+    const correctCount = responses.filter(r => r.is_correct).length
+    const totalTime = responses.reduce((sum, r) => sum + (r.response_time_ms || 0), 0)
+    const pointsPerCorrect = quiz.points_per_correct || 10
+    const totalPoints = correctCount * pointsPerCorrect
+    
+    // Insert the score
+    const { data: newScore } = await supabase
+      .from('quiz_scores')
+      .insert({
+        quiz_id: quizId,
+        user_id: userId,
+        total_points: totalPoints,
+        correct_answers: correctCount,
+        total_questions: quiz.question_count,
+        total_time_ms: totalTime,
+      })
+      .select()
+      .single()
+    
+    userScore = newScore
+  }
   
   // Get leaderboard for this quiz
   const { data: leaderboard } = await supabase

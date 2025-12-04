@@ -1,42 +1,42 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, Mic, Circle, Gamepad2, Crosshair, Swords, Trophy, Crown, Flame } from 'lucide-react'
+import Link from 'next/link'
+import { Users, Mic, Circle, Crosshair, Swords, Trophy, Crown, Flame, Gamepad2 } from 'lucide-react'
+import { useLiveActivity } from '@/lib/hooks'
 
-// Mock data - will be replaced with Discord API sync
-const MOCK_DATA = {
-  totalOnline: 247,
-  hubs: [
-    { name: 'CS2', slug: 'cs2', count: 89, color: '#DE9B35', icon: Crosshair },
-    { name: 'VAL', slug: 'valorant', count: 67, color: '#FD4556', icon: Swords },
-    { name: 'FIFA', slug: 'fifa', count: 43, color: '#22C55E', icon: Trophy },
-    { name: 'FN', slug: 'fortnite', count: 31, color: '#9D4DFF', icon: Crown },
-    { name: 'APEX', slug: 'apex', count: 17, color: '#DA292A', icon: Flame },
-  ],
-  voiceChannels: 4,
-  inVoice: 23,
+// Game icon mapping
+const GAME_ICONS: Record<string, React.ComponentType<any>> = {
+  cs2: Crosshair,
+  valorant: Swords,
+  fifa: Trophy,
+  fortnite: Crown,
+  apex: Flame,
+}
+
+// Shortened display names
+const SHORT_NAMES: Record<string, string> = {
+  cs2: 'CS2',
+  valorant: 'VAL',
+  fifa: 'FIFA',
+  fortnite: 'FN',
+  apex: 'APEX',
 }
 
 export function LivePlayerCount() {
-  const [data, setData] = useState(MOCK_DATA)
+  const { data, loading, isConnected } = useLiveActivity()
   const [pulse, setPulse] = useState(false)
+  const [prevTotal, setPrevTotal] = useState(0)
 
-  // Simulate live updates
+  // Pulse animation when count changes
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (data.totalOnline !== prevTotal && prevTotal !== 0) {
       setPulse(true)
-      setTimeout(() => setPulse(false), 500)
-      
-      // Randomly fluctuate numbers slightly for "live" feel
-      setData(prev => ({
-        ...prev,
-        totalOnline: prev.totalOnline + Math.floor(Math.random() * 5) - 2,
-        inVoice: Math.max(0, prev.inVoice + Math.floor(Math.random() * 3) - 1),
-      }))
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [])
+      const timer = setTimeout(() => setPulse(false), 500)
+      return () => clearTimeout(timer)
+    }
+    setPrevTotal(data.totalOnline)
+  }, [data.totalOnline, prevTotal])
 
   return (
     <div className="rounded-2xl rounded-tl-none bg-gradient-to-br from-ggza-black-lighter to-ggza-black-light border border-white/5 overflow-hidden">
@@ -51,10 +51,12 @@ export function LivePlayerCount() {
         </div>
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
           </span>
-          <span className="text-xs text-green-400 font-medium">LIVE</span>
+          <span className={`text-xs font-medium ${isConnected ? 'text-green-400' : 'text-yellow-400'}`}>
+            {isConnected ? 'LIVE' : 'SYNC'}
+          </span>
         </div>
       </div>
 
@@ -66,7 +68,9 @@ export function LivePlayerCount() {
             <Users className="w-5 h-5 text-green-400" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-white">{data.totalOnline}</div>
+            <div className={`text-2xl font-bold text-white transition-all ${pulse ? 'scale-110 text-green-400' : ''}`}>
+              {loading ? '—' : data.totalOnline}
+            </div>
             <div className="text-[10px] uppercase tracking-wide text-gray-500">Online Now</div>
           </div>
         </div>
@@ -77,7 +81,9 @@ export function LivePlayerCount() {
             <Mic className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-white">{data.inVoice}</div>
+            <div className="text-2xl font-bold text-white">
+              {loading ? '—' : data.inVoice}
+            </div>
             <div className="text-[10px] uppercase tracking-wide text-gray-500">In Voice</div>
           </div>
         </div>
@@ -87,21 +93,57 @@ export function LivePlayerCount() {
       <div className="px-4 py-3">
         <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2">Hub Activity</div>
         <div className="flex gap-2">
-          {data.hubs.map((hub) => (
-            <div 
-              key={hub.slug}
-              className="flex-1 flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all hover:scale-105 cursor-pointer"
-              style={{ backgroundColor: `${hub.color}10` }}
-            >
-              <span className="text-sm font-bold" style={{ color: hub.color }}>{hub.count}</span>
-              <span className="text-[9px] text-gray-500">{hub.name}</span>
-            </div>
-          ))}
+          {loading ? (
+            // Loading skeleton
+            Array(5).fill(0).map((_, i) => (
+              <div 
+                key={i}
+                className="flex-1 flex flex-col items-center gap-0.5 p-2 rounded-lg bg-white/5 animate-pulse"
+              >
+                <div className="w-6 h-4 bg-white/10 rounded" />
+                <div className="w-8 h-2 bg-white/5 rounded" />
+              </div>
+            ))
+          ) : (
+            data.hubs.map((hub) => {
+              const Icon = GAME_ICONS[hub.slug] || Gamepad2
+              const shortName = SHORT_NAMES[hub.slug] || hub.name
+              return (
+                <Link 
+                  key={hub.slug}
+                  href={`/hub/${hub.slug}`}
+                  className="flex-1 flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all hover:scale-105 cursor-pointer group"
+                  style={{ backgroundColor: `${hub.color}10` }}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold group-hover:scale-110 transition-transform" style={{ color: hub.color }}>
+                      {hub.count}
+                    </span>
+                    {hub.count > 0 && (
+                      <Circle className="w-1.5 h-1.5 fill-current animate-pulse" style={{ color: hub.color }} />
+                    )}
+                  </div>
+                  <span className="text-[9px] text-gray-500 group-hover:text-gray-400 transition-colors">
+                    {shortName}
+                  </span>
+                </Link>
+              )
+            })
+          )}
         </div>
       </div>
+
+      {/* In Quiz indicator */}
+      {data.inQuiz > 0 && (
+        <div className="px-4 py-2 border-t border-white/5 flex items-center justify-center gap-2 bg-ggza-gold/5">
+          <Gamepad2 className="w-3.5 h-3.5 text-ggza-gold animate-pulse" />
+          <span className="text-xs text-ggza-gold font-medium">
+            {data.inQuiz} player{data.inQuiz !== 1 ? 's' : ''} in quiz
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
 export default LivePlayerCount
-

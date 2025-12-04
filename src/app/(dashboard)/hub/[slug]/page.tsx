@@ -5,6 +5,8 @@ import { requireVerified } from '@/lib/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import { Card, Badge, Countdown, Button, Avatar } from '@/components/ui'
 import { formatCurrency, formatDate, DAY_NAMES, getOrdinalSuffix } from '@/lib/utils'
+import { HubActivitySection } from '@/components/hub/HubActivitySection'
+import { QuickPlayCard } from '@/components/hub/QuickPlayCard'
 
 interface Props {
   params: { slug: string }
@@ -205,6 +207,25 @@ export default async function GameHubPage({ params }: Props) {
         
         {/* Sidebar */}
         <section>
+          {/* Quick Play Card */}
+          <div className="mb-6">
+            <QuickPlayCard
+              gameSlug={game.slug}
+              gameName={game.display_name}
+              gameColor={game.color}
+            />
+          </div>
+          
+          {/* Hub Activity Card */}
+          <div className="mb-6">
+            <HubActivitySection 
+              gameId={game.id}
+              gameSlug={game.slug}
+              gameName={game.display_name}
+              gameColor={game.color}
+            />
+          </div>
+          
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-ggza-gold" />
             Rankings

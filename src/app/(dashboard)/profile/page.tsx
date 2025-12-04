@@ -1,10 +1,20 @@
+import Image from 'next/image'
 import { requireAuth } from '@/lib/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import { ProfileForm } from '@/components/profile/ProfileForm'
 import { TransactionHistory } from '@/components/profile/TransactionHistory'
 import { Card, Avatar, Badge } from '@/components/ui'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Trophy, Wallet, Calendar, Shield } from 'lucide-react'
+import { getLevelInfo } from '@/lib/xp'
+import { Trophy, Wallet, Calendar, Shield, Star, Zap, Flame } from 'lucide-react'
+
+const GAME_IMAGES: Record<string, string> = {
+  cs2: '/cs2.png',
+  valorant: '/valorant.jpg',
+  fifa: '/fifa.jpg',
+  fortnite: '/fortnite.jpg',
+  apex: '/apex.jpg',
+}
 
 async function getProfileData(userId: string) {
   const supabase = createAdminSupabaseClient()
@@ -44,18 +54,22 @@ async function getProfileData(userId: string) {
     .order('created_at', { ascending: false })
     .limit(10)
   
+  // Get level info
+  const levelInfo = user ? await getLevelInfo(user.xp || 0) : null
+
   return {
     user,
     userGames: userGames || [],
     allGames: allGames || [],
     payouts: payouts || [],
     recentScores: recentScores || [],
+    levelInfo,
   }
 }
 
 export default async function ProfilePage() {
   const currentUser = await requireAuth()
-  const { user, userGames, allGames, payouts, recentScores } = await getProfileData(currentUser.id)
+  const { user, userGames, allGames, payouts, recentScores, levelInfo } = await getProfileData(currentUser.id)
 
   if (!user) {
     return <div>User not found</div>
@@ -110,6 +124,54 @@ export default async function ProfilePage() {
         
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Level Card */}
+          {levelInfo && (
+            <Card className="p-6" style={{ borderColor: `${levelInfo.color}30` }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}88)` }}
+                >
+                  <Star className="w-6 h-6 text-ggza-black" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-white">Level {levelInfo.level}</div>
+                  <div className="text-sm" style={{ color: levelInfo.color }}>{levelInfo.title}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">XP Progress</span>
+                  <span className="text-white font-medium">
+                    {user.xp?.toLocaleString() || 0} / {levelInfo.nextLevelXP?.toLocaleString() || '∞'}
+                  </span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all"
+                    style={{ 
+                      width: `${levelInfo.progress}%`,
+                      backgroundColor: levelInfo.color,
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {user.streak_days > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm text-gray-400">Login Streak</span>
+                    </div>
+                    <span className="text-orange-400 font-bold">{user.streak_days} days</span>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+          
           {/* Stats */}
           <Card className="p-6">
             <h3 className="font-semibold text-white mb-4">Statistics</h3>
@@ -137,6 +199,16 @@ export default async function ProfilePage() {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <span className="text-gray-400">Total XP</span>
+                </div>
+                <span className="text-xl font-bold text-purple-400">{(user.xp || 0).toLocaleString()}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                     <Calendar className="w-5 h-5 text-blue-400" />
                   </div>
@@ -154,17 +226,31 @@ export default async function ProfilePage() {
               {userGames.map((ug: any) => (
                 <div 
                   key={ug.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-white/5"
+                  className="relative flex items-center gap-3 p-2 rounded-lg overflow-hidden group"
                 >
+                  {/* Subtle background image */}
+                  {GAME_IMAGES[ug.game?.slug] && (
+                    <>
+                      <div className="absolute inset-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity">
+                        <Image
+                          src={GAME_IMAGES[ug.game?.slug]}
+                          alt=""
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-ggza-black-lighter via-ggza-black-lighter/90 to-transparent" />
+                    </>
+                  )}
                   <div 
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${ug.game?.color}20` }}
+                    className="relative w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${ug.game?.color}25` }}
                   >
                     <span style={{ color: ug.game?.color }}>●</span>
                   </div>
-                  <span className="text-sm text-white">{ug.game?.display_name}</span>
+                  <span className="relative text-sm text-white">{ug.game?.display_name}</span>
                   {ug.is_favorite && (
-                    <Badge variant="gold" size="sm" className="ml-auto">Favorite</Badge>
+                    <Badge variant="gold" size="sm" className="relative ml-auto">Favorite</Badge>
                   )}
                 </div>
               ))}

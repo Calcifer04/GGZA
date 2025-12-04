@@ -1,88 +1,198 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Zap, X, RotateCcw, Trophy, Crown, Medal } from 'lucide-react'
+import { Zap, X, RotateCcw, Trophy, Crown, Medal, Loader2, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
+import { Avatar } from './Avatar'
 
 type GameState = 'idle' | 'waiting' | 'ready' | 'clicked' | 'too-early'
 
-// Mock leaderboard data - in a real app this would come from the backend
-const MOCK_LEADERBOARD = [
-  { rank: 1, username: 'FlashReflexes', time: 142, avatar: '🎯' },
-  { rank: 2, username: 'SpeedDemon_ZA', time: 156, avatar: '⚡' },
-  { rank: 3, username: 'QuickSilver', time: 163, avatar: '🚀' },
-  { rank: 4, username: 'ReactionKing', time: 178, avatar: '👑' },
-  { rank: 5, username: 'BlitzMaster', time: 184, avatar: '💨' },
-  { rank: 6, username: 'NinjaFingers', time: 191, avatar: '🥷' },
-  { rank: 7, username: 'SwiftGamer', time: 198, avatar: '🎮' },
-  { rank: 8, username: 'RapidFire', time: 205, avatar: '🔥' },
-  { rank: 9, username: 'LightningBolt', time: 212, avatar: '⚡' },
-  { rank: 10, username: 'FastAndFurious', time: 219, avatar: '🏎️' },
-]
+interface LeaderboardEntry {
+  rank: number
+  username: string
+  discordUsername: string
+  discordAvatar: string | null
+  discordId: string
+  time: number
+  attempts: number
+}
+
+interface UserScore {
+  bestTime: number
+  attempts: number
+  rank: number | null
+}
 
 export function ReactionTest() {
   const [isOpen, setIsOpen] = useState(false)
-  const [gameState, setGameState] = useState<GameState>('idle')
+  const [displayState, setDisplayState] = useState<GameState>('idle')
   const [reactionTime, setReactionTime] = useState<number | null>(null)
   const [bestTime, setBestTime] = useState<number | null>(null)
   const [attempts, setAttempts] = useState<number[]>([])
+  const [isNewBest, setIsNewBest] = useState(false)
+  
+  // Leaderboard state
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [userScore, setUserScore] = useState<UserScore | null>(null)
+  const [totalPlayers, setTotalPlayers] = useState(0)
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  
+  // CRITICAL: Use refs for timing-sensitive values to avoid closure/state delays
+  const gameStateRef = useRef<GameState>('idle')
   const startTimeRef = useRef<number>(0)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const bestTimeRef = useRef<number | null>(null)
 
-  // Load best time from localStorage
+  // Sync bestTime ref
   useEffect(() => {
-    const saved = localStorage.getItem('ggza-reaction-best')
-    if (saved) {
-      setBestTime(parseInt(saved, 10))
+    bestTimeRef.current = bestTime
+  }, [bestTime])
+
+  // Fetch leaderboard
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const res = await fetch('/api/reaction')
+      if (!res.ok) throw new Error('Failed to fetch')
+      const data = await res.json()
+      
+      setLeaderboard(data.leaderboard || [])
+      setUserScore(data.userScore)
+      setTotalPlayers(data.totalPlayers)
+      
+      if (data.userScore?.bestTime) {
+        setBestTime(data.userScore.bestTime)
+      }
+    } catch (error) {
+      console.error('Leaderboard fetch error:', error)
+    } finally {
+      setLeaderboardLoading(false)
     }
   }, [])
 
-  const saveBestTime = useCallback((time: number) => {
-    if (!bestTime || time < bestTime) {
-      setBestTime(time)
-      localStorage.setItem('ggza-reaction-best', time.toString())
+  // Load leaderboard when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchLeaderboard()
+    }
+  }, [isOpen, fetchLeaderboard])
+
+  // Also load best time from localStorage as fallback
+  useEffect(() => {
+    const saved = localStorage.getItem('ggza-reaction-best')
+    if (saved && !bestTime) {
+      const savedTime = parseInt(saved, 10)
+      setBestTime(savedTime)
+      bestTimeRef.current = savedTime
     }
   }, [bestTime])
 
-  const startGame = useCallback(() => {
-    setGameState('waiting')
-    setReactionTime(null)
+  // Submit score to server (non-blocking)
+  const submitScore = useCallback((time: number) => {
+    setSubmitting(true)
+    fetch('/api/reaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timeMs: time }),
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.isNewBest) {
+          setIsNewBest(true)
+        }
+        fetchLeaderboard()
+      })
+      .catch(console.error)
+      .finally(() => setSubmitting(false))
+  }, [fetchLeaderboard])
 
-    // Random delay between 1.5 and 5 seconds
-    const delay = 1500 + Math.random() * 3500
+  const startGame = useCallback(() => {
+    // Update ref FIRST (synchronous)
+    gameStateRef.current = 'waiting'
+    setDisplayState('waiting')
+    setReactionTime(null)
+    setIsNewBest(false)
+
+    // Random delay between 2 and 5 seconds
+    const delay = 2000 + Math.random() * 3000
 
     timeoutRef.current = setTimeout(() => {
-      setGameState('ready')
+      // Capture start time with maximum precision
       startTimeRef.current = performance.now()
+      gameStateRef.current = 'ready'
+      setDisplayState('ready')
       sounds.playStart()
     }, delay)
   }, [])
 
-  const handleClick = useCallback(() => {
-    if (gameState === 'waiting') {
+  // CRITICAL: Ultra-fast click handler using refs (no state delays)
+  const handleGameAreaClick = useCallback(() => {
+    // Capture click time IMMEDIATELY - before any other code
+    const clickTime = performance.now()
+    
+    // Use ref for instant state check (no closure delay)
+    const currentState = gameStateRef.current
+
+    if (currentState === 'idle') {
+      startGame()
+      return
+    }
+
+    if (currentState === 'waiting') {
       // Clicked too early!
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
-      setGameState('too-early')
+      gameStateRef.current = 'too-early'
+      setDisplayState('too-early')
       sounds.playWrong()
-    } else if (gameState === 'ready') {
-      const time = Math.round(performance.now() - startTimeRef.current)
+      return
+    }
+
+    if (currentState === 'ready') {
+      // Calculate reaction time with sub-millisecond precision, then round
+      const rawTime = clickTime - startTimeRef.current
+      const time = Math.round(rawTime)
+      
+      // Update state ref FIRST
+      gameStateRef.current = 'clicked'
+      
+      // Then update display
       setReactionTime(time)
       setAttempts(prev => [...prev.slice(-4), time])
-      saveBestTime(time)
-      setGameState('clicked')
+      setDisplayState('clicked')
       sounds.playCorrect()
+      
+      // Check for new best
+      const currentBest = bestTimeRef.current
+      if (!currentBest || time < currentBest) {
+        setBestTime(time)
+        bestTimeRef.current = time
+        localStorage.setItem('ggza-reaction-best', time.toString())
+        setIsNewBest(true)
+      }
+      
+      // Submit to server (non-blocking)
+      submitScore(time)
+      return
     }
-  }, [gameState, saveBestTime])
+
+    if (currentState === 'clicked' || currentState === 'too-early') {
+      startGame()
+    }
+  }, [startGame, submitScore])
 
   const reset = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
     }
-    setGameState('idle')
+    gameStateRef.current = 'idle'
+    setDisplayState('idle')
     setReactionTime(null)
+    setIsNewBest(false)
   }, [])
 
   // Cleanup on unmount
@@ -144,7 +254,8 @@ export function ReactionTest() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => {
-            if (gameState === 'idle' || gameState === 'clicked' || gameState === 'too-early') {
+            const state = gameStateRef.current
+            if (state === 'idle' || state === 'clicked' || state === 'too-early') {
               setIsOpen(false)
               reset()
             }
@@ -171,7 +282,7 @@ export function ReactionTest() {
                   </div>
                   <div>
                     <h3 className="font-display text-white">Reaction Test</h3>
-                    <p className="text-xs text-gray-500">Test your reflexes</p>
+                    <p className="text-xs text-gray-500">Test your reflexes • High precision timing</p>
                   </div>
                 </div>
                 <button
@@ -185,59 +296,68 @@ export function ReactionTest() {
                 </button>
               </div>
 
-              {/* Game Area */}
+              {/* Game Area - Use onMouseDown for faster response than onClick */}
               <div
-                onClick={() => {
-                  if (gameState === 'idle') startGame()
-                  else if (gameState === 'waiting' || gameState === 'ready') handleClick()
-                  else if (gameState === 'clicked' || gameState === 'too-early') startGame()
+                onMouseDown={handleGameAreaClick}
+                onTouchStart={(e) => {
+                  e.preventDefault()
+                  handleGameAreaClick()
                 }}
                 className={cn(
-                  'flex-1 flex flex-col items-center justify-center cursor-pointer select-none transition-colors duration-200',
-                  gameState === 'idle' && 'bg-ggza-black hover:bg-ggza-black-lighter',
-                  gameState === 'waiting' && 'bg-red-900/50',
-                  gameState === 'ready' && 'bg-green-600 animate-pulse',
-                  gameState === 'clicked' && 'bg-ggza-black',
-                  gameState === 'too-early' && 'bg-red-900/80'
+                  'flex-1 flex flex-col items-center justify-center cursor-pointer select-none transition-colors duration-150',
+                  displayState === 'idle' && 'bg-ggza-black hover:bg-ggza-black-lighter',
+                  displayState === 'waiting' && 'bg-red-900/50',
+                  displayState === 'ready' && 'bg-green-600',
+                  displayState === 'clicked' && 'bg-ggza-black',
+                  displayState === 'too-early' && 'bg-red-900/80'
                 )}
               >
-                {gameState === 'idle' && (
+                {displayState === 'idle' && (
                   <div className="text-center">
                     <div className="w-20 h-20 rounded-full bg-ggza-gold/20 flex items-center justify-center mx-auto mb-4">
                       <Zap className="w-10 h-10 text-ggza-gold" />
                     </div>
                     <p className="text-xl text-white font-display mb-2">Click to Start</p>
-                    <p className="text-sm text-gray-400">Click when the screen turns green</p>
+                    <p className="text-sm text-gray-400">Click/tap when the screen turns green</p>
                   </div>
                 )}
 
-                {gameState === 'waiting' && (
+                {displayState === 'waiting' && (
                   <div className="text-center">
                     <p className="text-2xl text-white font-display mb-2">Wait for green...</p>
                     <p className="text-sm text-red-300">Don't click yet!</p>
                   </div>
                 )}
 
-                {gameState === 'ready' && (
+                {displayState === 'ready' && (
                   <div className="text-center">
-                    <p className="text-4xl text-white font-display animate-bounce">CLICK NOW!</p>
+                    <p className="text-5xl text-white font-display">CLICK!</p>
                   </div>
                 )}
 
-                {gameState === 'clicked' && reactionTime !== null && (
+                {displayState === 'clicked' && reactionTime !== null && (
                   <div className="text-center">
-                    <p className={cn('text-5xl font-display mb-2', getTimeColor(reactionTime))}>
-                      {reactionTime}ms
+                    <p className={cn('text-6xl font-display mb-2 tabular-nums', getTimeColor(reactionTime))}>
+                      {reactionTime}<span className="text-3xl">ms</span>
                     </p>
-                    <p className="text-lg text-gray-300 mb-4">{getTimeLabel(reactionTime)}</p>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <p className="text-lg text-gray-300 mb-2">{getTimeLabel(reactionTime)}</p>
+                    {isNewBest && (
+                      <p className="text-ggza-gold font-bold mb-2 animate-pulse">🎉 New Personal Best!</p>
+                    )}
+                    {submitting && (
+                      <p className="text-gray-400 text-sm flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-400 mt-4">
                       <RotateCcw className="w-4 h-4" />
                       <span>Click to try again</span>
                     </div>
                   </div>
                 )}
 
-                {gameState === 'too-early' && (
+                {displayState === 'too-early' && (
                   <div className="text-center">
                     <p className="text-3xl text-red-400 font-display mb-2">Too Early!</p>
                     <p className="text-gray-300 mb-4">Wait for the green screen</p>
@@ -257,15 +377,22 @@ export function ReactionTest() {
                       <div className="flex items-center gap-2">
                         <Trophy className="w-4 h-4 text-ggza-gold" />
                         <span className="text-xs text-gray-400">Best:</span>
-                        <span className={cn('text-sm font-mono font-bold', getTimeColor(bestTime))}>
+                        <span className={cn('text-sm font-mono font-bold tabular-nums', getTimeColor(bestTime))}>
                           {bestTime}ms
                         </span>
+                      </div>
+                    )}
+                    {userScore?.rank && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">Rank:</span>
+                        <span className="text-sm font-bold text-ggza-gold">#{userScore.rank}</span>
+                        <span className="text-xs text-gray-500">/ {totalPlayers}</span>
                       </div>
                     )}
                     {averageTime && (
                       <div>
                         <span className="text-xs text-gray-400">Avg:</span>
-                        <span className="text-sm font-mono text-gray-300 ml-2">
+                        <span className="text-sm font-mono text-gray-300 ml-2 tabular-nums">
                           {averageTime}ms
                         </span>
                       </div>
@@ -314,106 +441,140 @@ export function ReactionTest() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ggza-gold opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ggza-gold"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
                   </span>
-                  <span className="text-xs text-ggza-gold font-medium">TOP 10</span>
+                  <span className="text-xs text-green-400 font-medium">LIVE</span>
                 </div>
               </div>
 
               {/* Leaderboard List */}
               <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-                {MOCK_LEADERBOARD.map((entry, index) => {
-                  const userWouldBeHere = bestTime && 
-                    (index === 0 ? bestTime < entry.time : 
-                      bestTime >= MOCK_LEADERBOARD[index - 1].time && bestTime < entry.time)
-                  
-                  return (
-                    <div key={entry.rank}>
-                      {/* Show user's position if they would be here */}
-                      {userWouldBeHere && (
-                        <div className="mb-1.5 p-2.5 rounded-xl bg-ggza-gold/20 border border-ggza-gold/40 flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-full bg-ggza-gold/30 flex items-center justify-center text-xs font-bold text-ggza-gold">
-                            {index + 1}
+                {leaderboardLoading ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-3">
+                    <Loader2 className="w-6 h-6 text-ggza-gold animate-spin" />
+                    <span className="text-xs text-gray-400">Loading...</span>
+                  </div>
+                ) : leaderboard.length > 0 ? (
+                  <>
+                    {leaderboard.map((entry, index) => {
+                      const userWouldBeHere = userScore?.bestTime && 
+                        !leaderboard.some(e => e.discordId === userScore?.rank?.toString()) &&
+                        (index === 0 ? userScore.bestTime < entry.time : 
+                          userScore.bestTime >= leaderboard[index - 1].time && userScore.bestTime < entry.time)
+                      
+                      return (
+                        <div key={entry.rank}>
+                          {/* Show user's position if they would be here but aren't in top 10 */}
+                          {userWouldBeHere && (
+                            <div className="mb-1.5 p-2.5 rounded-xl bg-ggza-gold/20 border border-ggza-gold/40 flex items-center gap-2.5">
+                              <div className="w-6 h-6 rounded-full bg-ggza-gold/30 flex items-center justify-center text-xs font-bold text-ggza-gold">
+                                {userScore?.rank}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-ggza-gold truncate">You</p>
+                              </div>
+                              <span className={cn('font-mono text-xs font-bold tabular-nums', getTimeColor(userScore?.bestTime || 0))}>
+                                {userScore?.bestTime}ms
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Regular leaderboard entry */}
+                          <div
+                            className={cn(
+                              'p-2.5 rounded-xl flex items-center gap-2.5 transition-all',
+                              entry.rank <= 3 
+                                ? 'bg-gradient-to-r from-white/5 to-transparent' 
+                                : 'hover:bg-white/5'
+                            )}
+                          >
+                            {/* Rank */}
+                            <div className={cn(
+                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                              entry.rank === 1 && 'bg-yellow-500/20 text-yellow-400',
+                              entry.rank === 2 && 'bg-gray-400/20 text-gray-300',
+                              entry.rank === 3 && 'bg-amber-600/20 text-amber-500',
+                              entry.rank > 3 && 'bg-white/10 text-gray-500'
+                            )}>
+                              {entry.rank === 1 ? <Crown className="w-3.5 h-3.5" /> : 
+                               entry.rank === 2 ? <Medal className="w-3.5 h-3.5" /> :
+                               entry.rank === 3 ? <Medal className="w-3.5 h-3.5" /> :
+                               entry.rank}
+                            </div>
+
+                            {/* Avatar & Name */}
+                            {entry.discordAvatar ? (
+                              <Avatar
+                                discordId={entry.discordId}
+                                avatarHash={entry.discordAvatar}
+                                username={entry.discordUsername}
+                                size="xs"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                                <User className="w-3 h-3 text-gray-400" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-white truncate">{entry.username}</p>
+                            </div>
+
+                            {/* Time */}
+                            <span className={cn('font-mono text-xs font-bold tabular-nums', getTimeColor(entry.time))}>
+                              {entry.time}ms
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {/* Show user at bottom if not on leaderboard */}
+                    {userScore && userScore.rank && userScore.rank > 10 && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <p className="text-[10px] text-gray-500 mb-1.5 text-center uppercase tracking-wide">Your position</p>
+                        <div className="p-2.5 rounded-xl bg-ggza-gold/10 border border-ggza-gold/20 flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-ggza-gold/20 flex items-center justify-center text-xs font-bold text-ggza-gold">
+                            {userScore.rank}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-ggza-gold truncate">You</p>
+                            <p className="text-xs font-medium text-gray-300 truncate">You</p>
                           </div>
-                          <span className={cn('font-mono text-xs font-bold', getTimeColor(bestTime))}>
-                            {bestTime}ms
+                          <span className={cn('font-mono text-xs font-bold tabular-nums', getTimeColor(userScore.bestTime))}>
+                            {userScore.bestTime}ms
                           </span>
                         </div>
-                      )}
-                      
-                      {/* Regular leaderboard entry */}
-                      <div
-                        className={cn(
-                          'p-2.5 rounded-xl flex items-center gap-2.5 transition-all',
-                          entry.rank <= 3 
-                            ? 'bg-gradient-to-r from-white/5 to-transparent' 
-                            : 'hover:bg-white/5'
+                        {leaderboard.length > 0 && (
+                          <p className="text-[10px] text-gray-600 mt-1.5 text-center">
+                            Beat {leaderboard[leaderboard.length - 1].time}ms to enter top 10!
+                          </p>
                         )}
-                      >
-                        {/* Rank */}
-                        <div className={cn(
-                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                          entry.rank === 1 && 'bg-yellow-500/20 text-yellow-400',
-                          entry.rank === 2 && 'bg-gray-400/20 text-gray-300',
-                          entry.rank === 3 && 'bg-amber-600/20 text-amber-500',
-                          entry.rank > 3 && 'bg-white/10 text-gray-500'
-                        )}>
-                          {entry.rank === 1 ? <Crown className="w-3.5 h-3.5" /> : 
-                           entry.rank === 2 ? <Medal className="w-3.5 h-3.5" /> :
-                           entry.rank === 3 ? <Medal className="w-3.5 h-3.5" /> :
-                           entry.rank}
-                        </div>
-
-                        {/* Avatar & Name */}
-                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-sm">
-                          {entry.avatar}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-white truncate">{entry.username}</p>
-                        </div>
-
-                        {/* Time */}
-                        <span className={cn('font-mono text-xs font-bold', getTimeColor(entry.time))}>
-                          {entry.time}ms
-                        </span>
                       </div>
-                    </div>
-                  )
-                })}
-
-                {/* Show user at bottom if not on leaderboard */}
-                {bestTime && bestTime >= MOCK_LEADERBOARD[MOCK_LEADERBOARD.length - 1].time && (
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <p className="text-[10px] text-gray-500 mb-1.5 text-center uppercase tracking-wide">Your best time</p>
-                    <div className="p-2.5 rounded-xl bg-ggza-gold/10 border border-ggza-gold/20 flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">
-                        —
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-300 truncate">You</p>
-                      </div>
-                      <span className={cn('font-mono text-xs font-bold', getTimeColor(bestTime))}>
-                        {bestTime}ms
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-gray-600 mt-1.5 text-center">
-                      Beat {MOCK_LEADERBOARD[MOCK_LEADERBOARD.length - 1].time}ms to enter!
-                    </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <Trophy className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-400">No scores yet</p>
+                    <p className="text-xs text-gray-500">Be the first!</p>
                   </div>
                 )}
 
-                {/* Prompt to play if no best time */}
-                {!bestTime && (
+                {/* Prompt to play if no user score */}
+                {!userScore && !leaderboardLoading && (
                   <div className="mt-3 pt-3 border-t border-white/10 text-center">
                     <p className="text-xs text-gray-400">
                       Play to see where you rank!
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Total players footer */}
+              <div className="px-4 py-2 border-t border-white/5 text-center">
+                <span className="text-[10px] text-gray-500">
+                  {totalPlayers} player{totalPlayers !== 1 ? 's' : ''} total
+                </span>
               </div>
             </div>
           </div>
@@ -422,4 +583,3 @@ export function ReactionTest() {
     </>
   )
 }
-

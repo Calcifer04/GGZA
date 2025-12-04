@@ -1,10 +1,19 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Trophy, Medal, Clock, Gamepad2 } from 'lucide-react'
 import { requireVerified } from '@/lib/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import { Card, Badge, Avatar, Button } from '@/components/ui'
 import { formatCurrency, GAME_COLORS, GAME_NAMES, getOrdinalSuffix, formatTime } from '@/lib/utils'
+
+const GAME_IMAGES: Record<string, string> = {
+  cs2: '/cs2.png',
+  valorant: '/valorant.jpg',
+  fifa: '/fifa.jpg',
+  fortnite: '/fortnite.jpg',
+  apex: '/apex.jpg',
+}
 
 interface Props {
   searchParams: { game?: string; period?: string }
@@ -73,13 +82,28 @@ export default async function LeaderboardPage({ searchParams }: Props) {
               key={game.id} 
               href={`/leaderboard?game=${game.slug}&period=${period}`}
             >
-              <Button
-                variant={selectedGame?.slug === game.slug ? 'gold' : 'outline'}
-                size="sm"
+              <button
+                className={`
+                  relative px-4 py-2 rounded-xl text-sm font-medium overflow-hidden transition-all
+                  ${selectedGame?.slug === game.slug 
+                    ? 'ring-2 ring-ggza-gold shadow-lg shadow-ggza-gold/20' 
+                    : 'ring-1 ring-white/10 hover:ring-white/30'}
+                `}
               >
-                <Gamepad2 className="w-4 h-4" />
-                {game.display_name}
-              </Button>
+                {/* Background image */}
+                {GAME_IMAGES[game.slug] && (
+                  <>
+                    <div className={`absolute inset-0 transition-opacity ${selectedGame?.slug === game.slug ? 'opacity-20' : 'opacity-10 hover:opacity-15'}`}>
+                      <Image src={GAME_IMAGES[game.slug]} alt="" fill className="object-cover" />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-ggza-black via-ggza-black/80 to-ggza-black/60" />
+                  </>
+                )}
+                <span className={`relative flex items-center gap-2 ${selectedGame?.slug === game.slug ? 'text-ggza-gold' : 'text-white'}`}>
+                  <Gamepad2 className="w-4 h-4" />
+                  {game.display_name}
+                </span>
+              </button>
             </Link>
           ))}
         </div>

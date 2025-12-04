@@ -1,9 +1,19 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Gamepad2, Calendar, Trophy, Users, ArrowRight } from 'lucide-react'
 import { requireVerified } from '@/lib/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import { Card, Badge, Countdown } from '@/components/ui'
 import { GAME_COLORS, DAY_NAMES, formatCurrency } from '@/lib/utils'
+
+// Map game slugs to their images
+const GAME_IMAGES: Record<string, string> = {
+  cs2: '/cs2.png',
+  valorant: '/valorant.jpg',
+  fifa: '/fifa.jpg',
+  fortnite: '/fortnite.jpg',
+  apex: '/apex.jpg',
+}
 
 async function getHubData() {
   const supabase = createAdminSupabaseClient()
@@ -58,17 +68,33 @@ export default async function HubPage() {
           <Link key={game.id} href={`/hub/${game.slug}`}>
             <Card 
               interactive 
-              className="h-full overflow-hidden group"
+              className="h-full overflow-hidden group relative"
             >
+              {/* Subtle background image */}
+              {GAME_IMAGES[game.slug] && (
+                <>
+                  <div className="absolute top-0 right-0 w-1/2 h-full overflow-hidden opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500">
+                    <Image
+                      src={GAME_IMAGES[game.slug]}
+                      alt=""
+                      fill
+                      className="object-cover object-center scale-125 group-hover:scale-110 transition-transform duration-700"
+                    />
+                  </div>
+                  {/* Fade gradient from left */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-ggza-black-lighter via-ggza-black-lighter/95 to-transparent pointer-events-none" />
+                </>
+              )}
+              
               {/* Header with game color */}
               <div 
-                className="h-2 -mx-6 -mt-6 mb-6"
+                className="h-1.5 -mx-6 -mt-6 mb-6 relative z-10"
                 style={{ backgroundColor: game.color }}
               />
               
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 relative z-10">
                 <div 
-                  className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+                  className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 backdrop-blur-sm"
                   style={{ backgroundColor: `${game.color}20` }}
                 >
                   <Gamepad2 className="w-7 h-7" style={{ color: game.color }} />
@@ -83,7 +109,7 @@ export default async function HubPage() {
               </div>
               
               {/* Stats */}
-              <div className="flex items-center gap-4 mt-6 pt-4 border-t border-white/5">
+              <div className="flex items-center gap-4 mt-6 pt-4 border-t border-white/5 relative z-10">
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Calendar className="w-4 h-4" />
                   <span>{DAY_NAMES[game.quiz_day]}s @ 7PM</span>
@@ -96,7 +122,7 @@ export default async function HubPage() {
               
               {/* Next Quiz */}
               {game.nextQuiz && (
-                <div className="mt-4 p-3 rounded-xl bg-ggza-black border border-white/5">
+                <div className="mt-4 p-3 rounded-xl bg-ggza-black/80 backdrop-blur-sm border border-white/5 relative z-10">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Next Quiz</div>
@@ -109,7 +135,7 @@ export default async function HubPage() {
                 </div>
               )}
               
-              <div className="flex items-center justify-end mt-4 text-ggza-gold text-sm font-medium">
+              <div className="flex items-center justify-end mt-4 text-ggza-gold text-sm font-medium relative z-10">
                 Enter Hub <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
             </Card>

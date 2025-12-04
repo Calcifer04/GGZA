@@ -12,10 +12,11 @@ import {
   LogOut, 
   Menu, 
   X,
-  Shield
+  Shield,
+  Play
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Avatar } from '@/components/ui'
+import { Avatar, LevelBadge } from '@/components/ui'
 import type { Session } from '@/lib/auth'
 
 interface DashboardNavProps {
@@ -24,6 +25,7 @@ interface DashboardNavProps {
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: Home },
+  { href: '/play', label: 'Play', icon: Play },
   { href: '/hub', label: 'Game Hubs', icon: Gamepad2 },
   { href: '/leaderboard', label: 'Leaderboards', icon: Trophy },
   { href: '/profile', label: 'Profile', icon: User },
@@ -76,6 +78,7 @@ export function DashboardNav({ session }: DashboardNavProps) {
             {/* User Menu */}
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-3">
+                <LevelBadge size="sm" />
                 <Avatar
                   discordId={session.discordId}
                   avatarHash={session.discordAvatar}
